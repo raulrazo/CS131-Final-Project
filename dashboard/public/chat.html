@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Access Log Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    canvas {
+      margin: 30px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Access Events</h1>
+  <ul id="logList"></ul>
+
+  <h2>Access Attempts Over Time</h2>
+  <canvas id="accessOverTime"></canvas>
+
+  <h2>Access Outcome Breakdown</h2>
+  <canvas id="accessOutcome"></canvas>
+
+  <h2>Confidence Score Distribution</h2>
+  <canvas id="confidenceDist"></canvas>
+
+  <h2>Average Confidence Over Time</h2>
+  <canvas id="avgConfidence"></canvas>
+
+  <h2>Unrecognized Attempts Over Time</h2>
+  <canvas id="unrecognized"></canvas>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: 'gibby',
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      databaseURL: "https://cs131-final-project-49b00-default-rtdb.firebaseio.com",
+      projectId: "cs131-final-project-49b00",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const ref = db.ref("access_logs");
+
+    const accessCounts = {};
+    const outcomeCounts = { granted: 0, denied: 0 };
+    const confidenceScores = [];
+    const avgConfidenceByDay = {};
+    const unrecognizedByDay = {};
+
+    ref.on("child_added", (snapshot) => {
+      const data = snapshot.val();
+      const ts = new Date(data.timestamp);
+      const day = ts.toISOString().split('T')[0];
+
+      const person = data.person || "Unknown";
+      const confidence = parseFloat((data.confidence || 0).toFixed(2));
+
+      // List log
+      const li = document.createElement("li");
+      li.textContent = `${data.timestamp} | ${data.status} ${data.person ? "by " + data.person : ""} | Conf: ${confidence}`;
+      document.getElementById("logList").appendChild(li);
+
+      // Chart: Access Over Time
+      accessCounts[day] = (accessCounts[day] || 0) + 1;
+
+      // Chart: Outcome breakdown
+      if (data.status === 'granted') {
+        outcomeCounts.granted++;
+      } else {
+        outcomeCounts.denied++;
+        if (person === "Unknown") {
+          unrecognizedByDay[day] = (unrecognizedByDay[day] || 0) + 1;
+        }
+      }
+
+      // Chart: Confidence distribution & Avg confidence by day
+      confidenceScores.push(confidence);
+      if (!avgConfidenceByDay[day]) avgConfidenceByDay[day] = [];
+      avgConfidenceByDay[day].push(confidence);
+
+      updateCharts();
+    });
+
+    let accessChart, outcomeChart, confidenceChart, avgConfChart, unrecChart;
+
+    function updateCharts() {
+      const days = Object.keys(accessCounts);
+
+      const accessData = days.map(day => accessCounts[day]);
+      const avgConfData = days.map(day => {
+        const vals = avgConfidenceByDay[day];
+        return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2);
+      });
+      const unrecData = days.map(day => unrecognizedByDay[day] || 0);
+
+      if (accessChart) accessChart.destroy();
+      accessChart = new Chart(document.getElementById('accessOverTime'), {
+        type: 'bar',
+        data: {
+          labels: days,
+          datasets: [{ label: 'Access Attempts', data: accessData, backgroundColor: 'blue' }]
+        }
+      });
+
+      if (outcomeChart) outcomeChart.destroy();
+      outcomeChart = new Chart(document.getElementById('accessOutcome'), {
+        type: 'pie',
+        data: {
+          labels: ['Granted', 'Denied'],
+          datasets: [{
+            data: [outcomeCounts.granted, outcomeCounts.denied],
+            backgroundColor: ['green', 'red']
+          }]
+        }
+      });
+
+      if (confidenceChart) confidenceChart.destroy();
+      confidenceChart = new Chart(document.getElementById('confidenceDist'), {
+        type: 'bar',
+        data: {
+          labels: confidenceScores.map((_, i) => i + 1),
+          datasets: [{ label: 'Confidence Scores', data: confidenceScores, backgroundColor: 'orange' }]
+        }
+      });
+
+      if (avgConfChart) avgConfChart.destroy();
+      avgConfChart = new Chart(document.getElementById('avgConfidence'), {
+        type: 'line',
+        data: {
+          labels: days,
+          datasets: [{ label: 'Avg Confidence', data: avgConfData, borderColor: 'purple', fill: false }]
+        }
+      });
+
+      if (unrecChart) unrecChart.destroy();
+      unrecChart = new Chart(document.getElementById('unrecognized'), {
+        type: 'bar',
+        data: {
+          labels: days,
+          datasets: [{ label: 'Unrecognized Attempts', data: unrecData, backgroundColor: 'gray' }]
+        }
+      });
+    }
+  </script>
+</body>
+</html>
