@@ -7,6 +7,8 @@ yarn-error.log*
 firebase-debug.log*
 firebase-debug.*.log*
 
+cs131-final-project-49b00-firebase-adminsdk-fbsvc-2244845f6b.json
+
 # Firebase cache
 .firebase/
 
