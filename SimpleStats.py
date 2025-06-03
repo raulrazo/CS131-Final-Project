@@ -6,7 +6,8 @@ from firebase_admin import credentials
 from firebase_admin import db
 
 # Initialize the app with a service account
-cred = credentials.Certificate("/Users/raulrazo/CS131-Final-Project/cs131-final-project-49b00-firebase-adminsdk-fbsvc-cfd4ddece0.json")
+
+cred = credentials.Certificate("file json path")
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://cs131-final-project-49b00-default-rtdb.firebaseio.com/'
 })
