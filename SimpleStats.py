@@ -6,6 +6,7 @@ from firebase_admin import credentials
 from firebase_admin import db
 
 # Initialize the app with a service account
+
 cred = credentials.Certificate("file json path")
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://cs131-final-project-49b00-default-rtdb.firebaseio.com/'
@@ -114,4 +115,3 @@ plt.ylabel('Number of Accesses')
 plt.xticks(rotation=45)
 plt.tight_layout()
 plt.show()
-
